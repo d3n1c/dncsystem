@@ -1,0 +1,5 @@
+name = "DNC System"
+description = "Parent of DNC's system"
+core = 7.x
+package = DNC System
+dependencies[] = date_api

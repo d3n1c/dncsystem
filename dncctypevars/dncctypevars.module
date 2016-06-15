@@ -1,0 +1,605 @@
+<?php
+
+/* 
+ * Copyright (C) 2015 denic
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/**
+ * @file
+ * Module to manage generalization of content variable
+ * to fit with all dnc system's scripts
+ */
+
+/**
+ * Implementation of hook_load
+ *  @return arg
+ **/
+function dncctypevars_load($arg) {
+  return check_plain($arg);
+}
+
+/**
+ * Implements hook_menu
+ * 
+ * @return array
+ *   menu listing
+ */
+function dncctypevars_menu() {
+  $items = array();
+  $items['admin/structure/dncsystem/dncctypevars'] = array(
+    'title' => 'DNC\'s Content Type variables',
+    'description' => 'Register DNC\'s content type variables',
+//    'position' => 'right',
+    'access arguments' => array('administer dnc system'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('dncctypevars_manager'),
+    'file' => 'dncctypevars.admin.inc',
+  );
+  $items['admin/structure/dncsystem/dncctypevars/add'] = array(
+    'title' => 'Register new variable',
+    'description' => 'Registering new content type variables',
+    'access arguments' => array('administer dnc system'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('dncctypevars_register'),
+    'file' => 'dncctypevars.admin.inc',
+    'type' => MENU_LOCAL_ACTION,
+  );
+  $items['admin/structure/dncsystem/dncctypevars-manage/%dncctypevars'] = array(
+    'title' => 'Register new variable',
+    'description' => 'Registering new content type variables',
+    'access arguments' => array('administer dnc system'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('dncctypevars_module_register', 4),
+    'file' => 'dncctypevars.admin.inc',
+    'type' => MENU_LOCAL_ACTION,
+  );
+  $items['dncctypevars/ctset/%ctools_js/form/setctype/%dncctypevars/%'] = array(
+    'title' => 'Register Content Type',
+    'description' => 'Registering content type into data key',
+    'page callback' => 'dncctypevars_module_register_ctype_popup',
+    'page arguments' => array(1, 5),
+    'access arguments' => array('administer dnc system'),
+    'type' => MENU_CALLBACK,
+    'file' => 'dncctypevars.admin.inc',
+  );
+  $items['dncctypevars/search/module'] = array(
+    'access arguments' => array('administer site configuration'),
+    'page callback' => '_dncctypevars_admin_module_autocomplete',
+    'type' => MENU_CALLBACK,
+  );
+  $items['dncctypevars/search/parentkey'] = array(
+    'access arguments' => array('administer site configuration'),
+    'page callback' => '_dncctypevars_admin_parentkey_autocomplete',
+    'type' => MENU_CALLBACK,
+  );
+  $items['dncctypevars/search/contenttype'] = array(
+    'access arguments' => array('administer site configuration'),
+    'page callback' => '_dncctypevars_admin_nodetype_autocomplete',
+    'type' => MENU_CALLBACK,
+  );
+  $items['dncctypevars/search/field'] = array(
+    'access arguments' => array('administer site configuration'),
+    'page callback' => '_dncctypevars_admin_field_autocomplete',
+    'type' => MENU_CALLBACK,
+  );
+  
+  return $items;
+}
+
+/**
+ * Autocomplete service function
+ * 
+ * @param string $string
+ *   request string to be the key of searching
+ * 
+ * @return string Output in json that matches
+ */
+function _dncctypevars_admin_nodetype_autocomplete($string) {
+  $matches = array();
+  $sql = db_select('node_type', 'n')
+          ->fields('n', array('type'))
+          ->condition('type', '%' . $string . '%', 'LIKE')
+          ->range(0, 20)
+        ->execute();
+  $result = $sql->fetchAll();
+  if (is_array($result) && count($result) > 0) {
+    foreach ($result as $value) {
+      $matches[$value->type] = $value->type;
+    }
+  }
+  unset ($result);
+  drupal_json_output($matches);
+}
+
+/**
+ * Autocomplete service function by field key
+ * 
+ * @param string $string
+ *   string of the field name request
+ * 
+ * @return string in json formatted output if matches
+ */
+function _dncctypevars_admin_field_autocomplete($string) {
+  $matches = array();
+  if (mb_eregi($string, 'title')) {
+    $matches['title'] = 'title (Core: Title)';
+  }
+  $sql = db_select('field_config', 'n')
+          ->fields('n', array('field_name'))
+          ->condition('field_name', '%' . $string . '%', 'LIKE')
+          ->range(0, 20)
+        ->execute();
+  $result = $sql->fetchAll();
+  if (is_array($result) && count($result) > 0) {
+    foreach ($result as $value) {
+      $bundle = _dncctypevars_admin_get_field_bundleuser($value->field_name);
+      $dump = array();
+      if (!empty($bundle)) {
+        foreach ($bundle as $key => $val) {
+          $dump[] = $key . ': ' . $val;
+        }
+      }
+      $matches[$value->field_name] = $value->field_name . ' (' . implode(', ', $dump) . ')';
+      unset ($dump, $bundle);
+    }
+  }
+  unset ($result);
+  drupal_json_output($matches);
+}
+
+/**
+ * Getting bundles of the fieldname
+ * 
+ * @param string $fieldname
+ *   string of field name
+ * 
+ * @return array
+ *   bundles array if any
+ */
+function _dncctypevars_admin_get_field_bundleuser($fieldname) {
+  $result = field_info_field($fieldname);
+  $bundles = array();
+  if (!empty($result['bundles']['node'])) {
+    foreach ($result['bundles']['node'] as $value) {
+      $detail = field_info_instance('node', $fieldname, $value);
+      $bundles[$value] = $detail['label'];
+    }
+  }
+  unset ($result);
+  return $bundles;
+}
+
+/**
+ * Autocomplete service function by parent key
+ * 
+ * @param string $string
+ *   string to be key of searching
+ * 
+ * @return string
+ *   Output matches in json formatted
+ */
+function _dncctypevars_admin_parentkey_autocomplete($string) {
+  $matches = array();
+  $sql = db_select('dncctypevars_registers', 'n')
+          ->fields('n', array('parentkey'))
+          ->condition('parentkey', '%' . $string . '%', 'LIKE')
+          ->range(0, 20)
+        ->execute();
+  $result = $sql->fetchAll();
+  if (is_array($result) && count($result) > 0) {
+    foreach ($result as $value) {
+      $matches[$value->parentkey] = $value->parentkey;
+    }
+  }
+  unset ($result);
+  drupal_json_output($matches);
+}
+
+/**
+ * Autocomplete service function by module
+ * 
+ * @param string $string
+ *   string of module name
+ * 
+ * @return string
+ *   output in json formatted if matches
+ */
+function _dncctypevars_admin_module_autocomplete($string) {
+  $matches = array();
+  $sql = db_select('system', 'n')
+          ->fields('n', array('name'))
+          ->condition('type', 'module')
+          ->condition('status', 1)
+          ->condition('name', '%' . $string . '%', 'LIKE')
+          ->range(0, 20)
+        ->execute();
+  $result = $sql->fetchAll();
+  if (is_array($result) && count($result) > 0) {
+    foreach ($result as $value) {
+      $dump = system_get_info('module', $value->name);
+      $matches[$value->name] = $dump['name'] . ' (' . $value->name . ')';
+      unset ($dump);
+    }
+  }
+  unset ($result);
+  drupal_json_output($matches);
+}
+
+/**
+ * Get ID of new variable
+ * always take maximum number of existing ID
+ * 
+ * @return int
+ *   ID of the variable
+ */
+function dncctypevars_get_new_variable_id() {
+  $query = db_select('dncctypevars_registers', 'n')
+          ->fields('n', array('varid'))
+          ->orderBy('varid', 'DESC')
+          ->range(0, 1)
+        ->execute();
+  $result = $query->fetchAssoc();
+  unset($query);
+  if (count($result) < 1) {
+    $return = 1;
+  }
+  else {
+    settype($result['varid'], 'int');
+    $return = $result['varid'] + 1;
+  }
+  unset ($result);
+  return $return;
+}
+
+/**
+ * Getting variable data by given ID
+ * 
+ * @param int $id
+ *   ID that be key to searching action
+ * 
+ * @return array
+ *   result array if data found, NULL if otherwise
+ */
+function dncctypevars_get_variables_by_id($id) {
+  settype($id, 'int');
+  $query = db_select('dncctypevars_registers', 'n')
+          ->fields('n')
+          ->condition('varid', $id)
+          ->execute();
+  $result = $query->fetchAssoc();
+  unset ($query);
+  if (count($result) < 1) {
+    unset ($result);
+    return;
+  }
+  return $result;
+}
+
+/**
+ * Delete variables by given IDs
+ * 
+ * @param array $ids
+ *   some id to be key to searching in delete action
+ * 
+ * @return null
+ */
+function dncctypevars_delete_variables_by_ids(array $ids = array()) {
+  if (count($ids) < 1) {
+    return;
+  }
+  foreach ($ids as $value) {
+    settype($value, 'int');
+    db_delete('dncctypevars_registers')->condition('varid', $value)->execute();
+  }
+}
+
+/**
+ * Getting variable by given parameters
+ * 
+ * @param string $module
+ *   string of the module name
+ * @param string $parentkey
+ *   key of the parent
+ * @param string $context
+ *   context of searching content type
+ * @param string $name
+ *   name of the variable that will search
+ * 
+ * @return array
+ *   result array if matches, or NULL if otherwise
+ */
+function dncctypevars_get_variable_by_params($module, $parentkey, $context, $name) {
+  $query = db_select('dncctypevars_registers', 'n')
+          ->fields('n')
+          ->condition('module', $module)
+          ->condition('parentkey', $parentkey)
+          ->condition('context', $context)
+          ->condition('varname', $name)
+          ->execute();
+  $result = $query->fetchAssoc();
+  unset ($query);
+  if (empty($result['varid'])) {
+    unset ($result);
+    return;
+  }
+  return $result['varvalue'];
+}
+
+/**
+ * Retrieving scheme variables
+ * 
+ * @param string $modulename
+ *   Name of the given module
+ * @param array $scheme
+ *   Data scheme
+ * 
+ * @return array
+ *   result array of the data variables
+ */
+function dncctypevars_retrieve_scheme_vars($modulename, array $scheme = array()) {
+  $return = array();
+  foreach ($scheme as $key => $value) {
+    $return[$key]['content_type'] = dncctypevars_get_variable_by_params($modulename, $key, 'content_type', $key);
+    foreach ($value as $vl) {
+      $return[$key]['fields'][$vl] = dncctypevars_get_variable_by_params($modulename, $key, 'field', $vl);
+    }
+  }
+  return $return;
+}
+
+/**
+ * Getting scheme info
+ * 
+ * @param string $modulename
+ *   Given name of the module
+ * @param array $scheme
+ *   data scheme
+ * 
+ * @return string
+ *   Listing matches in html list
+ */
+function dncctypevars_get_scheme_infos($modulename, array $scheme = array()) {
+  $schema = dncctypevars_retrieve_scheme_vars($modulename, $scheme);
+  if (!is_array($schema) || count($schema) < 1) {
+    unset ($schema);
+    return;
+  }
+  $info = 'Content Type scheme :<ul>';
+  foreach ($schema as $key => $value) {
+    $info .= '<li' . (empty($value['content_type']) ? ' style="color: red;"' : NULL) . '><strong>' . $key . ':</strong> ' . (!empty($value['content_type']) ? $value['content_type'] : t('X - please register it by parentkey: @parentkey, context: content_type, name: @name', array('@parentkey' => $key, '@name' => $key)));
+    $info .= '<ul>';
+    foreach ($value['fields'] as $ky => $vl) {
+      $info .= '<li' . (empty($vl) ? ' style="color: red;"' : NULL) . '><strong>' . $ky . ':</strong> ' . (!empty($vl) ? $vl : t('X - please register it by parentkey: @parentkey, context: field, name: @name', array('@parentkey' => $key, '@name' => $ky))) . '</li>';
+    }
+    $info .= '</ul></li>';
+  }
+  $info .= '</ul>';
+  $info .= t('You can register variable above by this ') . l('link', 'admin/structure/dncsystem/dncctypevars-manage/' . $modulename);
+  unset ($schema);
+  return $info;
+}
+
+/**
+ * Getting variable of content type scheme
+ * 
+ * @param string $module
+ *   given module name
+ * @param array $schemevars
+ *   data scheme
+ * @param string $varkey
+ *   key of the searching scheme
+ * 
+ * @return array
+ *   return array of the scheme key
+ */
+function dncctypevars_get_ctype_scheme_vars($module, $schemevars, $varkey = NULL) {
+  $sscheme = dncctypevars_retrieve_scheme_vars($module, $schemevars);
+  return empty($varkey) ? $sscheme : (empty($sscheme[$varkey]) ? NULL : $sscheme[$varkey]);
+}
+
+/**
+ * Getting context y content type
+ * 
+ * @param string $module
+ *   given module name
+ * @param string $content_type
+ *   information of the content type
+ * 
+ * @return array
+ *   Matches data array if found, or NULL if otherwise
+ */
+function dncctypevars_get_context_by_content_type($module, $content_type) {
+  $query = db_select('dncctypevars_registers', 'n')
+          ->fields('n')
+          ->condition('module', $module)
+          ->condition('context', 'content_type')
+          ->condition('varvalue', $content_type)
+          ->range(0, 1)
+          ->execute();
+  $result = $query->fetchAssoc();
+  unset ($query);
+  if (empty($result['varid'])) {
+    unset ($result);
+    return;
+  }
+  return $result['varname'];
+}
+
+/**
+ * Form to input content type data variable
+ * 
+ * @param array $form
+ *   variable array of form
+ * @param array $form_state
+ *   variable array of form state
+ * @param string $context
+ *   base64 encoded and serialized context array string
+ * 
+ * @return array
+ *   Form array that ready to render by drupal_get_form function
+ */
+function dncctypevars_register_content_type(array $form = array(), array $form_state = array(), $context = NULL) {
+  if (empty($form_state['storage']['context'])) {
+    if (!empty($context)) {
+      $context = dncsystem_unserialize(base64_decode(urldecode($context)));
+      $form_state['storage']['context'] = $context;
+    }
+  }
+  if (!empty($form_state['storage'])) {
+    foreach ($form_state['storage'] as $keys => $values) {
+      $form[$keys] = array(
+        '#type' => 'value',
+        '#value' => $values
+      );
+    }
+  }
+  $ctypes = array();
+  $types = node_type_get_types();
+  if (!empty($types)) {
+    foreach ($types as $value) {
+      $ctypes[$value->type] = $value->name;
+    } 
+  }
+  unset ($types);
+  $function = $module . '_content_type_schema_vars';
+  $defaults = !function_exists($function) ? array() : $function(TRUE, $form_state['storage']['context']);
+  $form['content_type'] = array(
+    '#type' => 'select',
+    '#options' => $ctypes,
+    '#title' => t('Content Type'),
+    '#default_value' => empty($defaults['content_type']) ? key($ctypes) : $defaults['content_type'],
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Set')
+  );
+  return $form;
+}
+
+/**
+ * Checking registered variable by given
+ * module, context, parentkey, and varname
+ * 
+ * @param string $module
+ *   module name of the variable
+ * @param string $context
+ *   context can be content_type or field
+ * @param string $parentkey
+ *   parent key of the variable, can be content type variable
+ * @param string $varname
+ *   variable name
+ * 
+ * @return array
+ *   Result data found in array, or NULL if not found
+ */
+function dncctypevars_check_existing_variable($module, $context, $parentkey, $varname) {
+  $sql = db_select('dncctypevars_registers', 'r')
+          ->fields('r')
+          ->condition('module', $module)
+          ->condition('context', $context)
+          ->condition('parentkey', $parentkey)
+          ->condition('varname', $varname)
+        ->execute();
+  $result = $sql->fetchAssoc();
+  unset ($sql);
+  if (empty($result['varid'])) {
+    unset ($result);
+    return;
+  }
+  return $result;
+}
+
+/**
+ * Save variable action.
+ * 
+ * @param string $module
+ *   module name of the variable
+ * @param string $varname
+ *   variable name
+ * @param string $parentkey
+ *   parent key of the variable, can be content type variable
+ * @param string $context
+ *   context can be content_type or field
+ * @param string $varvalue
+ *   the value of the variable
+ * 
+ * @return int
+ *   Return variable ID
+ */
+function dncctypevers_save_variable($module, $varname, $parentkey, $context, $varvalue) {
+  $record = new stdClass();
+  $record->module = $module;
+  $record->context = $context;
+  $record->parentkey = $parentkey;
+  $record->varname = $varname;
+  $record->varvalue = $varvalue;
+  $check = dncctypevars_check_existing_variable($module, $context, $parentkey, $varname);
+  if (!empty($check['varid'])) {
+    $record->varid = $check['varid'];
+    drupal_write_record('dncctypevars_registers', $record, 'varid');
+  }
+  else {
+    $record->varid = dncctypevars_get_new_variable_id();
+    drupal_write_record('dncctypevars_registers', $record);
+  }
+  unset($check);
+  return $record->varid;
+}
+
+/**
+ * Submit action for registering content type variable
+ * 
+ * @param array $form
+ *   variable array of form
+ * @param array $form_state
+ *   variable array of form state
+ */
+function dncctypevars_register_content_type_submit(&$form, &$form_state) {
+  form_state_values_clean($form_state);
+  dncctypevers_save_variable($form_state['values']['context']['module'], $form_state['values']['context']['context'], $form_state['values']['context']['context'], 'content_type', $form_state['values']['content_type']);
+}
+
+/**
+ * CTools Modal settings
+ * 
+ * @param string $size
+ *   information about size of modal's dialog box
+ *   it can be small, medium, or large
+ */
+function dncctypevars_set_modal_settings($size = 'small') {
+  $custom_style = array(
+    'dncctypevars-modal-style' => array(
+      'modalSize' => array(
+        'type' => 'scale',
+        'width' => ($size == 'small' ? .4 : ($size == 'medium' ? .6 : .8)),
+        'height' => ($size == 'small' ? .2 : ($size == 'medium' ? .4 : .7)),
+        'addWidth' => 70,
+        'addHeight' => 70,
+        'contentRight' => 10,
+        'contentBottom' => 20,
+      ),
+      'animation' => 'fadeIn',
+      'animationSpeed' => 'slow',
+      'loadingText' => t('Loading...'),
+      'modalOptions' => array(
+        'opacity' => .75,
+        'background' => '#000',
+      ),
+//      'modalTheme' => 'CoolsFaceStyle',
+    ),
+  );
+  drupal_add_js($custom_style, 'setting');
+}
