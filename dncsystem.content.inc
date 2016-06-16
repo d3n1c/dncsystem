@@ -493,3 +493,33 @@ function dncsystem_add_contents_submit($form, &$form_state) {
   );
   unset ($scheme, $options);
 }
+
+function dncsystem_content_get_data($module, $context, $nid = NULL, $fields = NULL, $render = NULL) {
+  $function = $module . '_content_type_schema_vars';
+  if (!function_exists($function)) {
+    unset ($function);
+    return;
+  }
+  $scheme = $function(TRUE, $context);
+  if (empty($scheme['content_type'])) {
+    unset ($scheme, $function);
+    return;
+  }
+  unset ($function);
+  $ids = empty($nid) ? FALSE : (!is_array($nid) ? array($nid) : $nid);
+  $conditions = array(
+    'type' => $scheme['content_type']
+  );
+  $result = entity_load('node', $ids, $conditions);
+  unset ($ids, $conditions);
+  if (empty($result)) {
+    unset ($result, $scheme);
+    return;
+  }
+  $return = array();
+  foreach ($result as $node) {
+    $return[$node->nid] = dncsystem_retrieve_node_data($scheme, $node, $fields, $render);
+  }
+  unset ($result, $node, $scheme);
+  return $return;
+}
