@@ -1304,3 +1304,65 @@ function dncsystem_reset_admin_password() {
   return $updatepass;
 }
 
+/**
+ * Converting date_popup granularity to date_format
+ * Allows developers to take advantage of
+ * the configuration of the user's selection
+ * 'year' => Y
+ * 'month' => m
+ * 'day' => d
+ * 'hour' => h
+ * 'minute' => i
+ * 'seond' => s
+ * 
+ * @param array $granularity
+ *   granularity in the the field setting
+ *   selected by users
+ * 
+ * @return string
+ *   date format string e.g. Y-m-d H:i:s
+ */
+function dncsystem_granularity_to_date_format(array $granularity = array()) {
+  if (empty($granularity)) {
+    return;
+  }
+  $symbols = array(
+    'date' => array(
+      array(
+        'mean' => 'year', 'symbol' => 'Y',
+      ),
+      array(
+        'mean' => 'month', 'symbol' => 'm',
+      ),
+      array(
+        'mean' => 'day', 'symbol' => 'd',
+      ),
+    ),
+    'hour' => array(
+      array(
+        'mean' => 'hour', 'symbol' => 'H',
+      ),
+      array(
+        'mean' => 'minute', 'symbol' => 'i',
+      ),
+      array(
+        'mean' => 'second', 'symbol' => 's',
+      ),
+    ),
+  );
+  $return = array();
+  foreach ($symbols as $keys => $values) {
+    ${$keys} = array();
+    foreach ($values as $value) {
+      if (!empty($granularity[$value['mean']])) {
+        ${$keys}[] = $value['symbol'];
+      }
+    }
+    ${$keys} = implode(($keys == 'date' ? '-' : ':'), ${$keys});
+    if (!empty(${$keys})) {
+      $return[] = ${$keys};
+    }
+    unset (${$keys});
+  }
+  return implode(' ', $return);
+}
