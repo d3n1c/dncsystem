@@ -523,3 +523,109 @@ function dncsystem_content_get_data($module, $context, $nid = NULL, $fields = NU
   unset ($result, $node, $scheme);
   return $return;
 }
+
+/**
+ * Make updating node generally in the system
+ * 
+ * @param string $module
+ *   module name
+ * @param string $context
+ *   context of content type
+ * @param array $data
+ *   data array to update
+ * 
+ * @return int
+ *   node ID if success, or NULL if otherwise
+ */
+function dncsystem_content_update_data($module, $context, array $data = array()) {
+  if (empty($data)) {
+    return;
+  }
+  if (!empty($data['nid'])) {
+    $default = dncsystem_content_get_data($module, $context, $data['nid']);
+    if (empty($default[$data['nid']])) {
+      unset ($default);
+      return;
+    }
+    $default = $default[$data['nid']];
+    // checking data
+    foreach ($data as $keys => $values) {
+      if (empty($default[$keys]) || $default[$keys] != $values) {
+        $diff = TRUE;
+        break;
+      }
+    }
+    if (!isset($diff) || empty($diff)) {
+      unset($diff, $default);
+      return;
+    }
+    unset ($diff);
+  }
+  
+  $function = $module . '_content_type_schema_vars';
+  if (!function_exists($function)) {
+    unset ($function, $default);
+    return;
+  }
+  
+  $scheme = $function(TRUE, $context);
+  unset ($function);
+  if (empty($scheme['content_type'])) {
+    unset ($scheme, $default);
+    return;
+  }
+  
+  if (!empty($default)) {
+    $node = node_load($default['nid']);
+    if (empty($node->type) || $node->type != $scheme['content_type']) {
+      unset ($node, $scheme, $default);
+      return;
+    }
+  }
+  else {
+    $node = new stdClass();
+    $node->type = $scheme['content_type'];
+    $node->title = empty($data['title']) ? t('Input in') . ' ' . dncsystem_date('l, Y-m-d H:i:s') : $data['title'];
+    $node->language = LANGUAGE_NONE;
+    node_object_prepare($node);
+  }
+  unset ($default);
+  
+  foreach ($scheme['fields'] as $keys => $values) {
+    if (!empty($data[$keys])) {
+      if ($values == 'title') {
+        $node->title = $data[$keys];
+      }
+      else {
+        $data[$keys] = !is_array($data[$keys]) ? array($data[$keys]) : $data[$keys];
+        $finfo = field_info_field($values);
+        $column = isset($finfo['columns']['target_id']) ? 'target_id' : (isset($finfo['columns']['rgb']) ? 'rgb' : 'value');
+        $i = 0;
+        foreach ($data[$keys] as $value) {
+          $node->{$values}[$node->language][$i][$column] = $value;
+          if ($keys == 'body') {
+            $format = dncsystem_is_serialized($value) || dncsystem_is_validBase64($value) ? 'plain_text' : 'full_html';
+            $node->{$values}[$node->language][$i]['format'] = $format;
+            unset ($format);
+          }
+          elseif($finfo['type'] == 'entityreference') {
+            $node->{$values}[$node->language][$i]['target_type'] = $finfo['settings']['target_type'];
+          }
+          $i++;
+        }
+        unset ($finfo, $column, $i);
+      }
+    }
+  }
+  unset ($scheme);
+  
+  if (empty($node->nid)) {
+    node_submit($node);
+  }
+  node_save($node);
+  $return = $node->nid;
+  unset ($node);
+  return $return;
+}
+
+
