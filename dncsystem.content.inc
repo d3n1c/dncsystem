@@ -533,11 +533,13 @@ function dncsystem_content_get_data($module, $context, $nid = NULL, $fields = NU
  *   context of content type
  * @param array $data
  *   data array to update
+ * @param boolean $force
+ *   information to force action
  * 
  * @return int
  *   node ID if success, or NULL if otherwise
  */
-function dncsystem_content_update_data($module, $context, array $data = array()) {
+function dncsystem_content_update_data($module, $context, array $data = array(), $force = FALSE) {
   if (empty($data)) {
     return;
   }
@@ -548,18 +550,20 @@ function dncsystem_content_update_data($module, $context, array $data = array())
       return;
     }
     $default = $default[$data['nid']];
-    // checking data
-    foreach ($data as $keys => $values) {
-      if (empty($default[$keys]) || $default[$keys] != $values) {
-        $diff = TRUE;
-        break;
+    if (empty($force)) {
+      // checking data
+      foreach ($data as $keys => $values) {
+        if (empty($default[$keys]) || $default[$keys] != $values) {
+          $diff = TRUE;
+          break;
+        }
       }
+      if (!isset($diff) || empty($diff)) {
+        unset($diff, $default);
+        return $data['nid'];
+      }
+      unset ($diff);
     }
-    if (!isset($diff) || empty($diff)) {
-      unset($diff, $default);
-      return $data['nid'];
-    }
-    unset ($diff);
   }
   
   $function = $module . '_content_type_schema_vars';
