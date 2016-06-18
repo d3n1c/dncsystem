@@ -518,7 +518,7 @@ function dncsystem_content_get_data($module, $context, $nid = NULL, $fields = NU
   }
   $return = array();
   foreach ($result as $node) {
-    $return[$node->nid] = dncsystem_retrieve_node_data($scheme, $node, $fields, $render);
+    $return[$node->nid] = dncsystem_retrieve_node_data($scheme, $node, $fields, $render, TRUE);
   }
   unset ($result, $node, $scheme);
   return $return;
@@ -544,6 +544,7 @@ function dncsystem_content_update_data($module, $context, array $data = array(),
     return;
   }
   if (!empty($data['nid'])) {
+    settype($data['nid'], 'int');
     $default = dncsystem_content_get_data($module, $context, $data['nid']);
     if (empty($default[$data['nid']])) {
       unset ($default);
