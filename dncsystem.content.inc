@@ -646,9 +646,8 @@ function dncsystem_content_delete($module, $context, $nid) {
   foreach ($nids as $values) {
     $node = node_load($values);
     if (!empty($node->type) && $node->type == $scheme['content_type']) {
-      db_update('node')->fields(
-        array('status' => NODE_NOT_PUBLISHED)
-      )->condition('nid', $values)->execute();
+      $node->status = NODE_NOT_PUBLISHED;
+      node_save($node);
     }
     unset ($node);
   }
