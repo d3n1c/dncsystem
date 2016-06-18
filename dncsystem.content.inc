@@ -557,7 +557,7 @@ function dncsystem_content_update_data($module, $context, array $data = array())
     }
     if (!isset($diff) || empty($diff)) {
       unset($diff, $default);
-      return;
+      return $data['nid'];
     }
     unset ($diff);
   }
@@ -581,6 +581,7 @@ function dncsystem_content_update_data($module, $context, array $data = array())
       unset ($node, $scheme, $default);
       return;
     }
+    $node->status = NODE_PUBLISHED;
   }
   else {
     $node = new stdClass();
@@ -588,6 +589,7 @@ function dncsystem_content_update_data($module, $context, array $data = array())
     $node->title = empty($data['title']) ? t('Input in') . ' ' . dncsystem_date('l, Y-m-d H:i:s') : $data['title'];
     $node->language = LANGUAGE_NONE;
     node_object_prepare($node);
+    $node->uid = 1;
   }
   unset ($default);
   
@@ -628,4 +630,26 @@ function dncsystem_content_update_data($module, $context, array $data = array())
   return $return;
 }
 
-
+function dncsystem_content_delete($module, $context, $nid) {
+  $function = $module . '_content_type_schema_vars';
+  if (!function_exists($function)) {
+    unset ($function);
+    return;
+  }
+  $scheme = $function(TRUE, $context);
+  unset($function);
+  if (empty($scheme['content_type'])) {
+    unset($scheme);
+    return;
+  }
+  $nids = !is_array($nid) ? array($nid) : $nid;
+  foreach ($nids as $values) {
+    $node = node_load($values);
+    if (!empty($node->type) && $node->type == $scheme['content_type']) {
+      db_update('node')->fields(
+        array('status' => NODE_NOT_PUBLISHED)
+      )->condition('nid', $values)->execute();
+    }
+    unset ($node);
+  }
+}
