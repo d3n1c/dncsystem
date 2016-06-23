@@ -1366,3 +1366,94 @@ function dncsystem_granularity_to_date_format(array $granularity = array()) {
   }
   return implode(' ', $return);
 }
+
+function dncsystem_count_age($birthdate, $withmonth = FALSE, $shortsign = FALSE) {
+  $strtime = strtotime($birthdate);
+  if ($strtime >= time()) {
+    unset ($strtime);
+    return NULL;
+  }
+  $date = date('Y-n-j', $strtime);
+  unset ($strtime);
+  list($year, $month, $day) = explode('-', $date);
+  unset ($date, $day);
+  $now = date('Y-n-j', time());
+  list($yearnow, $monthnow, $daynow) = explode('-', $now);
+  unset ($now, $daynow);
+  
+  $type = 'int';
+  settype($year, $type);
+  settype($month, $type);
+  settype($yearnow, $type);
+  settype($monthnow, $type);
+  unset ($type);
+  $result = (($yearnow - $year) * 12) - (12 - ((12 - $month) + $monthnow));
+  $result = floor($result / 12) . ' ' . (empty($shortsign) ? t('year') : t('yr.')) . ($withmonth !== FALSE && $result % 12 > 0 ? ' ' . ($result % 12) . ' ' . (empty($shortsign) ? t('month') : t('mth.')) : NULL);
+  unset ($year, $yearnow, $month, $monthnow);
+  return $result;
+}
+
+function dncsystem_circle_image($show, $real, $center = FALSE) {
+  drupal_add_css(
+    '
+      #dncthumbnail {
+        position: relative;
+        display: inline-block;
+        width: 70px;
+        height: 70px;
+        overflow: hidden;
+        border-radius: 50%;
+        box-shadow: 0 3px 5px 0 rgba(0, 0, 0, .8);
+        -webkit-box-shadow: 0 3px 5px 0 rgba(0, 0, 0, .8);
+        -moz-box-shadow: 0 3px 5px 0 rgba(0, 0, 0, .8);
+      }
+      
+      #dncthumbnail .dncimg-circle {
+        position: absolute;
+        left: 50%;
+        top: 65%;
+        height: auto;
+        width: 100%;
+        -webkit-transform: translate(-50%,-50%);
+            -ms-transform: translate(-50%,-50%);
+                transform: translate(-50%,-50%);
+      }
+      
+      #dncthumbnail0 {
+      }
+      
+      #dncthumbnail0 .dnccircular--landscape {
+        display: inline-block;
+        position: relative;
+        width: 70px;
+        height: 70px;
+        overflow: hidden;
+        border-radius: 50%;
+        box-shadow: 0 3px 5px 0 rgba(0, 0, 0, .8);
+        -webkit-box-shadow: 0 3px 5px 0 rgba(0, 0, 0, .8);
+        -moz-box-shadow: 0 3px 5px 0 rgba(0, 0, 0, .8);
+      }
+      
+      #dncthumbnail0 .dnccircular--landscape img{
+        width: auto;
+        height: 100%;
+        margin-left: -30%;
+        max-width: none;
+      }
+
+    ',
+    'inline'
+  );
+  return '
+    <div id="dncthumbnail' . (!empty($center) ? '0' : NULL) . '">
+      ' . (!empty($center) ? '<div class="dnccircular--landscape">' : NULL) . '
+      <a href="' . $real . '" target="_blank">
+        ' . (!empty($center) ? 
+          '<img src="' . $show . '">' :
+          '<img src="' . $show . '" class="dncimg-circle">
+          ') . '
+      </a>
+      ' . (!empty($center) ? '</div>' : NULL) . '
+    </div>
+  ';
+}
