@@ -760,15 +760,16 @@ function dncsystem_set_random_ticket($salt = 'dncsystem') {
  *   return bolean true or false in array
  */
 function dncsystem_check_invalid_date($date) {
-  $date = !is_array($date) ? array($date) : $date;
+  $dates = !is_array($date) ? array($date) : $date;
   $return = array();
-  foreach ($date as $values) {
-    $values = date('Y-n-j', strtotime($values));
-    $dump = explode('-', $values);
+  foreach ($dates as $values) {
+    $checkit = date('Y-n-j', strtotime($values));
+    $dump = explode('-', $checkit);
     $return[$values] = checkdate($dump[1], $dump[2], $dump[0]) !== TRUE ? FALSE : TRUE;
-    unset ($dump);
+    unset ($dump, $checkit);
   }
-  return count($return) < 2 ? $return[0] : $return;
+  unset ($dates);
+  return count($return) < 2 ? $return[$date] : $return;
 }
 
 /**
