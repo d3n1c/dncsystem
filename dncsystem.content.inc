@@ -635,6 +635,19 @@ function dncsystem_content_update_data($module, $context, array $data = array(),
   return $return;
 }
 
+/**
+ * Execute custom delete (fake)
+ * just flag this by NODE NOT PUBLISHED ;)
+ * 
+ * @param string $module
+ *   the module name
+ * @param string $context
+ *   name of the context
+ * @param int $nid
+ *   nid of the content
+ * 
+ * @return none
+ */
 function dncsystem_content_delete($module, $context, $nid) {
   $function = $module . '_content_type_schema_vars';
   if (!function_exists($function)) {

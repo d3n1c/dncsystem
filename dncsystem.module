@@ -240,6 +240,14 @@ function dncsystem_field_formatter_info() {
         'context' => NULL,
       ),
     ),
+    'circled_image' => array(
+      'label' => t('Circled Image'),
+      'field types' => array('image'),
+      'settings' => array(
+        'converter' => NULL,
+        'context' => NULL,
+      ),
+    ),
   );
 }
 
@@ -420,6 +428,16 @@ function dncsystem_field_formatter_view($entity_type, $entity, $field, $instance
       $dump = empty($settings['converter']) || !function_exists($settings['converter']) ? $dump : $settings['converter']($dump, $settings['context']);
       $element[$delta]['#markup'] = empty($dump) ? NULL : $dump;
       unset ($dump);
+    }
+  }
+  elseif ($display['type'] == 'circled_image') {
+    foreach ($items as $delta => $item) {
+      $show = image_style_url('thumbnail', $item['uri']);
+      $real = file_create_url($item['uri']);
+      $display = dncsystem_circle_image($show, $real);
+      unset ($show, $real);
+      $element[$delta]['#markup'] = $display;
+      unset ($display);
     }
   }
   unset ($settings);
@@ -750,7 +768,7 @@ function dncsystem_check_invalid_date($date) {
     $return[$values] = checkdate($dump[1], $dump[2], $dump[0]) !== TRUE ? FALSE : TRUE;
     unset ($dump);
   }
-  return $return;
+  return count($return) < 2 ? $return[0] : $return;
 }
 
 /**
