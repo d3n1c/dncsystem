@@ -70,7 +70,7 @@ function dncctypevars_menu() {
     'title' => 'Register Content Type',
     'description' => 'Registering content type into data key',
     'page callback' => 'dncctypevars_module_register_ctype_popup',
-    'page arguments' => array(1, 5),
+    'page arguments' => array(1, 5, 6),
     'access arguments' => array('administer dnc system'),
     'type' => MENU_CALLBACK,
     'file' => 'dncctypevars.admin.inc',
@@ -474,8 +474,8 @@ function dncctypevars_register_content_type(array $form = array(), array $form_s
     } 
   }
   unset ($types);
-  $function = $module . '_content_type_schema_vars';
-  $defaults = !function_exists($function) ? array() : $function(TRUE, $form_state['storage']['context']);
+  $function = $form_state['storage']['context']['module'] . '_content_type_schema_vars';
+  $defaults = !function_exists($function) ? array() : $function(TRUE, $form_state['storage']['context']['context']);
   $form['content_type'] = array(
     '#type' => 'select',
     '#options' => $ctypes,

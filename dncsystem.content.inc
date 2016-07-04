@@ -494,6 +494,24 @@ function dncsystem_add_contents_submit($form, &$form_state) {
   unset ($scheme, $options);
 }
 
+/**
+ * Generate data from custom module
+ * 
+ * @param string $module
+ *   name of the module
+ * @param string $context
+ *   string context e.g. 'persons', 'positions', etc. see
+ *   $module . '_content_type_schema_vars
+ * @param int $nid
+ *   nid of the content
+ * @param array|string $fields
+ *   field limit to show
+ * @param string $render
+ *   render flag display formatter
+ * 
+ * @return array
+ *   data array if found or NULL if otherwise
+ */
 function dncsystem_content_get_data($module, $context, $nid = NULL, $fields = NULL, $render = NULL) {
   $function = $module . '_content_type_schema_vars';
   if (!function_exists($function)) {

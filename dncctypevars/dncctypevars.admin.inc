@@ -504,13 +504,14 @@ function dncctypevars_module_register_submit(&$form, &$form_state) {
  * @return array
  *   ajax rendering
  */
-function dncctypevars_module_register_ctype_popup($js = NULL, $module, $context = 'content_type') {
+function dncctypevars_module_register_ctype_popup($js = NULL, $module, $context) {
   // degrade half-assed to no js
   $contexts = array(
     'module' => $module,
     'context' => $context,
   );
   if(!$js) {
+    $contexts = urlencode(base64_encode(serialize($contexts)));
     return drupal_get_form('dncctypevars_register_content_type', $contexts);
   }
   
@@ -535,7 +536,6 @@ function dncctypevars_module_register_ctype_popup($js = NULL, $module, $context 
     $output = array();
     $output[] = ctools_modal_command_dismiss(t('Success!'));
     $output[] = ctools_ajax_command_reload();
-    unset ($suplier);
   }
   print ajax_render($output);
 }

@@ -1386,6 +1386,20 @@ function dncsystem_granularity_to_date_format(array $granularity = array()) {
   return implode(' ', $return);
 }
 
+/**
+ * Count age from the given date of birth
+ * 
+ * @param string $birthdate
+ *   date of birth
+ * @param boolean $withmonth
+ *   flag whether show counted month information or not
+ * @param boolean $shortsign
+ *   flag whether suffix sign will show in short phrase or not
+ *   e.g. yr. for year, mth. for month
+ * 
+ * @return null|string
+ *   string age info
+ */
 function dncsystem_count_age($birthdate, $withmonth = FALSE, $shortsign = FALSE) {
   $strtime = strtotime($birthdate);
   if ($strtime >= time()) {
@@ -1412,6 +1426,19 @@ function dncsystem_count_age($birthdate, $withmonth = FALSE, $shortsign = FALSE)
   return $result;
 }
 
+/**
+ * Displaying image in circle frame
+ * 
+ * @param string $show
+ *   image url that will show in html
+ * @param string $real
+ *   image url that be targeted link
+ * @param boolean $center
+ *   set cropping action in center of the image or not
+ * 
+ * @return string
+ *   html tag to display di circle image
+ */
 function dncsystem_circle_image($show, $real, $center = FALSE) {
   drupal_add_css(
     '
