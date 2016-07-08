@@ -463,7 +463,7 @@ function dncctypevars_module_register_submit(&$form, &$form_state) {
   foreach ($source as $keys => $values) {
     $sourcekey = 'ctype_' . $keys;
     if (!empty($form_state['values'][$sourcekey])) {
-      dncctypevers_save_variable(
+      dncctypevars_save_variable(
         $form_state['values']['module'],
         $keys,
         $keys,
@@ -475,7 +475,7 @@ function dncctypevars_module_register_submit(&$form, &$form_state) {
     foreach ($values as $value) {
       $sourcekey = 'field_' . $keys . '_' . $value;
       if (!empty($form_state['values'][$sourcekey])) {
-        dncctypevers_save_variable(
+        dncctypevars_save_variable(
           $form_state['values']['module'],
           $value,
           $keys,

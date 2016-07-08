@@ -569,7 +569,7 @@ function dncctypevars_save_variable($module, $varname, $parentkey, $context, $va
  */
 function dncctypevars_register_content_type_submit(&$form, &$form_state) {
   form_state_values_clean($form_state);
-  dncctypevers_save_variable($form_state['values']['context']['module'], $form_state['values']['context']['context'], $form_state['values']['context']['context'], 'content_type', $form_state['values']['content_type']);
+  dncctypevars_save_variable($form_state['values']['context']['module'], $form_state['values']['context']['context'], $form_state['values']['context']['context'], 'content_type', $form_state['values']['content_type']);
 }
 
 /**
