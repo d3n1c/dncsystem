@@ -539,7 +539,7 @@ function dncctypevars_check_existing_variable($module, $context, $parentkey, $va
  * @return int
  *   Return variable ID
  */
-function dncctypevers_save_variable($module, $varname, $parentkey, $context, $varvalue) {
+function dncctypevars_save_variable($module, $varname, $parentkey, $context, $varvalue) {
   $record = new stdClass();
   $record->module = $module;
   $record->context = $context;
