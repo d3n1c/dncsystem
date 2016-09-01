@@ -41,7 +41,7 @@ if (in_array($argv, array('--help')) || empty($rhost) || empty($dpath) || empty(
   by this action
  
   Usage:
-  php localcron.php --host 'SERVER_HOST_NAME' --root '/path/to/drupal/root' --function FUNCTION_NAME
+  ./dncaction.php --host 'SERVER_HOST_NAME' --root '/path/to/drupal/root' --function FUNCTION_NAME
 
 <?php
   exit;

@@ -23,7 +23,7 @@ if (in_array($argv, array('--help')) || $argc < 5) {
   your website.
  
   Usage:
-  php localcron.php --key YOUR_CRON_KEY --root '/path/to/drupal/root'
+  ./dnccron.php --key YOUR_CRON_KEY --root '/path/to/drupal/root'
  
 <?php
 } else {
